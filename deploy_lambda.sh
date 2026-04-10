@@ -15,7 +15,7 @@ pip install -r requirements.txt -t lambda-package/
 
 # Copy source code
 echo "Copying source code..."
-cp -r src/scarica_azioni lambda-package/
+cp lambda_handler.py lambda-package/
 cp titoli_check.txt lambda-package/
 
 # Create zip file
@@ -30,5 +30,7 @@ echo "To deploy to AWS Lambda:"
 echo "  aws lambda update-function-code \\"
 echo "    --function-name scarica-azioni \\"
 echo "    --zip-file fileb://lambda-deployment.zip"
+echo ""
+echo "Handler: lambda_handler.handler"
 echo ""
 echo "Or upload lambda-deployment.zip manually via AWS Console"

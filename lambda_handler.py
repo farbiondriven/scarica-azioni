@@ -1,13 +1,16 @@
 """
-End-of-Day stock data fetcher
-Outputs: Date - Open - High - Low - Close
+Scarica Azioni - AWS Lambda handler
+Fetch End-of-Day stock data for Italian stocks
 """
 
+import json
 import logging
 
 import yfinance as yf
 
-logger = logging.getLogger(__name__)
+# Setup logging
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
 
 def parse_stock_list(file_path: str) -> dict:
@@ -147,3 +150,67 @@ def fetch_eod_data(stock_file: str, output_file: str = "eod_data.csv") -> list:
     logger.info(f"Data saved to: {output_file}")
 
     return results
+
+
+def handler(event, context):
+    """
+    AWS Lambda handler function.
+
+    Args:
+        event: Lambda event (can contain custom stock_file path)
+        context: Lambda context
+
+    Returns:
+        Response with status and results
+    """
+    try:
+        # Get stock file path from event or use default
+        stock_file = event.get("stock_file", "titoli_check.txt")
+        output_file = event.get("output_file", "/tmp/eod_data.csv")
+
+        logger.info(f"Fetching EOD data from {stock_file}")
+
+        # Fetch data
+        results = fetch_eod_data(stock_file, output_file)
+
+        # Count successes
+        successful = sum(1 for r in results if r["data"] is not None)
+        failed = len(results) - successful
+
+        logger.info(f"Completed: {successful} successful, {failed} failed")
+
+        return {
+            "statusCode": 200,
+            "body": json.dumps(
+                {
+                    "message": "EOD data fetched successfully",
+                    "total_stocks": len(results),
+                    "successful": successful,
+                    "failed": failed,
+                    "output_file": output_file,
+                }
+            ),
+        }
+
+    except Exception as e:
+        logger.error(f"Error in Lambda handler: {e}", exc_info=True)
+        return {
+            "statusCode": 500,
+            "body": json.dumps({"error": str(e)}),
+        }
+
+
+# CLI entry point for local testing
+if __name__ == "__main__":
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(levelname)s - %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
+
+    # Simulate Lambda event
+    event = {"stock_file": "titoli_check.txt", "output_file": "eod_data.csv"}
+    context = None
+
+    response = handler(event, context)
+    print(json.dumps(response, indent=2))

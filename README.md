@@ -32,20 +32,20 @@ uv sync
 ### Command Line
 
 ```bash
-# Run the CLI
-uv run python -m scarica_azioni.cli
+# Run directly
+uv run python lambda_handler.py
 
-# Or use the entry point (if installed)
-uv run scarica-azioni
+# Or with custom event
+python lambda_handler.py
 ```
 
-### As a Library
+### As a Python Module
 
 ```python
-from scarica_azioni import fetch_eod_data
+import lambda_handler
 
 # Fetch EOD data for stocks in the list
-results = fetch_eod_data("titoli_check.txt", "output.csv")
+results = lambda_handler.fetch_eod_data("titoli_check.txt", "output.csv")
 
 # Process results
 for result in results:
@@ -79,7 +79,7 @@ aws lambda update-function-code \
 
 2. **Deploy via AWS Console:**
    - Upload `lambda.zip` to your Lambda function
-   - Set handler to: `scarica_azioni.lambda_handler.handler`
+   - Set handler to: `lambda_handler.handler`
    - Set timeout to at least 60 seconds (API calls can be slow)
    - Set memory to at least 256 MB
 
@@ -171,19 +171,19 @@ The project uses GitHub Actions for continuous integration:
 scarica-azioni/
 ├── .github/
 │   └── workflows/
-│       └── ci.yml           # GitHub Actions CI workflow
-├── src/
-│   └── scarica_azioni/
-│       ├── __init__.py      # Package initialization
-│       ├── fetcher.py       # Core fetching logic
-│       └── cli.py           # Command-line interface
+│       └── ci.yml              # GitHub Actions CI workflow
 ├── tests/
 │   ├── __init__.py
-│   └── test_fetcher.py      # Unit tests
-├── titoli_check.txt         # Stock list file
-├── pyproject.toml           # Project configuration
+│   └── test_lambda_handler.py  # Unit tests
+├── lambda_handler.py           # Single file with all code
+├── titoli_check.txt            # Stock list file
+├── deploy_lambda.sh            # Lambda deployment script
+├── requirements.txt            # Dependencies for Lambda
+├── pyproject.toml              # Project configuration
 └── README.md
 ```
+
+**Simple single-file design** - Everything in `lambda_handler.py` for easy Lambda deployment!
 
 ## License
 
