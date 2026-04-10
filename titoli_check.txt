@@ -1,0 +1,15 @@
+a2a-A2A,aem08.txt
+azimut-AZM,azimut08.txt
+mps-BMPS,b_siena08.txt
+banco-bpm-BAMI,bpop_coo8.txt
+popolare-emilia-romagna-BPE,bpop_emil08.txt
+campari-CPR,campar08.txt
+enel-ENEL,enel08.txt
+eni-ENI,eni08.txt
+stellantis-nv-STLAM,fiat08.txt
+leonardo-LDO,finm08.txt
+generali-G,gener08.txt
+intesa-sanpaolo-ISP,b_intesa08.txt
+mfe-b-MFEB,medias08.txt
+mediobanca-MB,mediob08.txt
+fr0010446666-XBRMIB,XBRMIB.txt
