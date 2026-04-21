@@ -18,6 +18,14 @@ echo "Copying source code..."
 cp lambda_handler.py lambda-package/
 cp titoli_check.txt lambda-package/
 
+# Copy SMTP config if it exists
+if [ -f "smtp_config.json" ]; then
+    echo "Including smtp_config.json..."
+    cp smtp_config.json lambda-package/
+else
+    echo "Note: smtp_config.json not found. Email functionality will be disabled."
+fi
+
 # Create zip file
 echo "Creating deployment package..."
 cd lambda-package

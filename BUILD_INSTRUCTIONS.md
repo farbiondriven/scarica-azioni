@@ -91,7 +91,7 @@ scarica-azioni.exe
 
 Verify:
 - Console output appears
-- `eod_data.csv` is created
+- `eod_data.json` is created
 - No errors about missing modules
 
 ## Troubleshooting

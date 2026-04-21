@@ -1,12 +1,12 @@
 # -*- mode: python ; coding: utf-8 -*-
-# PyInstaller spec file for scarica-azioni
+
 
 a = Analysis(
     ['lambda_handler.py'],
     pathex=[],
     binaries=[],
     datas=[('titoli_check.txt', '.')],
-    hiddenimports=['yfinance', 'pandas', 'numpy', 'requests', 'certifi'],
+    hiddenimports=['yfinance', 'pandas', 'numpy', 'requests'],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
@@ -14,7 +14,6 @@ a = Analysis(
     noarchive=False,
     optimize=0,
 )
-
 pyz = PYZ(a.pure)
 
 exe = EXE(

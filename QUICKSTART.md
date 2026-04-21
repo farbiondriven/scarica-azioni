@@ -17,7 +17,7 @@ build_windows.bat
 scarica-azioni.exe
 ```
 
-Output: `eod_data.csv` with stock data
+Output: `eod_data.json` with stock data
 
 ---
 
@@ -54,13 +54,37 @@ python lambda_handler.py
 
 ---
 
+### ➕ Bonus: Email Reports
+
+**Send results via email automatically:**
+
+```bash
+# 1. Setup SMTP config
+cp smtp_config.example.json smtp_config.json
+# Edit smtp_config.json with your SMTP settings
+
+# 2. Run with email enabled
+python -c "
+import lambda_handler
+event = {'send_email': True}
+lambda_handler.handler(event, None)
+"
+```
+
+Works with: Gmail, Outlook, Yahoo, custom SMTP servers
+
+See [EMAIL_SETUP.md](EMAIL_SETUP.md) for detailed instructions.
+
+---
+
 ## What Each Method Does
 
 All methods:
 1. Read `titoli_check.txt` (15 Italian stocks)
 2. Fetch end-of-day prices from Yahoo Finance
-3. Save to CSV with: Date, Open, High, Low, Close
+3. Save to JSON with: Date, Open, High, Low, Close
 4. Display progress/results
+5. **Optional:** Send email report with formatted data
 
 ## Which Method Should I Use?
 
