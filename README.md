@@ -53,6 +53,54 @@ for result in results:
         print(f"{result['ticker']}: €{result['data']['close']:.2f}")
 ```
 
+### Windows Standalone Executable
+
+Build a standalone `.exe` that runs on Windows **without requiring Python or any dependencies installed**.
+
+#### Building the executable:
+
+**On Windows:**
+```bash
+# Install PyInstaller
+pip install pyinstaller
+
+# Build the executable
+build_windows.bat
+```
+
+**On Mac/Linux (cross-compile for Windows):**
+```bash
+# Build using UV
+./build_exe.sh
+
+# Or manually
+uv run pyinstaller scarica-azioni.spec
+```
+
+The executable will be created in `dist/scarica-azioni.exe` (~100-150MB, includes Python + all dependencies).
+
+#### Running the executable:
+
+1. Copy `scarica-azioni.exe` to your Windows PC
+2. Make sure `titoli_check.txt` is in the same directory
+3. Double-click `scarica-azioni.exe` or run from command prompt:
+   ```cmd
+   scarica-azioni.exe
+   ```
+
+The program will:
+- Fetch EOD data for all stocks in `titoli_check.txt`
+- Save results to `eod_data.csv` in the same directory
+- Display progress in the console
+
+#### GitHub Actions Auto-Build
+
+The Windows executable is automatically built when you:
+- Push a version tag (e.g., `v1.0.0`)
+- Or manually trigger the "Build Windows Executable" workflow
+
+Download the pre-built executable from GitHub Releases.
+
 ### AWS Lambda Deployment
 
 #### Option 1: Using the deployment script
@@ -171,19 +219,27 @@ The project uses GitHub Actions for continuous integration:
 scarica-azioni/
 ├── .github/
 │   └── workflows/
-│       └── ci.yml              # GitHub Actions CI workflow
+│       ├── ci.yml              # CI: linting, formatting, testing
+│       └── build-exe.yml       # Build Windows executable on release
 ├── tests/
 │   ├── __init__.py
 │   └── test_lambda_handler.py  # Unit tests
-├── lambda_handler.py           # Single file with all code
+├── lambda_handler.py           # Single file with all code ⭐
 ├── titoli_check.txt            # Stock list file
+├── scarica-azioni.spec         # PyInstaller spec for Windows exe
+├── build_windows.bat           # Build script for Windows
+├── build_exe.sh                # Build script for Unix
 ├── deploy_lambda.sh            # Lambda deployment script
-├── requirements.txt            # Dependencies for Lambda
+├── requirements.txt            # Dependencies
 ├── pyproject.toml              # Project configuration
+├── BUILD_INSTRUCTIONS.md       # Detailed build guide
 └── README.md
 ```
 
-**Simple single-file design** - Everything in `lambda_handler.py` for easy Lambda deployment!
+**Simple single-file design** - Everything in `lambda_handler.py` for:
+- ✅ Easy Lambda deployment
+- ✅ Standalone Windows `.exe` (no Python required!)
+- ✅ Direct Python execution
 
 ## License
 
