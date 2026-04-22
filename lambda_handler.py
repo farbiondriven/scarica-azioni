@@ -305,7 +305,7 @@ def roll_file(stock_file_path: Path, data: dict):
         if first_data_line:
             existing_date = first_data_line.split(",")[0].upper()
             new_date = data["date_full"].upper()
-            should_replace = (existing_date == new_date)
+            should_replace = existing_date == new_date
 
     # Reconstruct file
     data_file = [lines[0]]  # header
