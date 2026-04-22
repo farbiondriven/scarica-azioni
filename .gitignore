@@ -37,8 +37,9 @@ htmlcov/
 Thumbs.db
 
 # Output files
-eod_data.json
-eod_*.json
+eod_data.csv
+eod_*.csv
+*.csv
 
 # Logs
 *.log
@@ -48,5 +49,5 @@ lambda-package/
 lambda-deployment.zip
 lambda.zip
 
-# SMTP secrets
-smtp_config.json
+# Config with secrets
+config.json

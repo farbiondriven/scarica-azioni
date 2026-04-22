@@ -56,21 +56,27 @@ def temp_single_stock_file(tmp_path):
 
 
 @pytest.fixture
-def temp_json_file(tmp_path):
-    """Create a temporary JSON file path."""
-    return tmp_path / "output.json"
+def temp_csv_file(tmp_path):
+    """Create a temporary CSV file path."""
+    return tmp_path / "output.csv"
 
 
 @pytest.fixture
-def temp_smtp_config(tmp_path):
-    """Create a temporary SMTP config file."""
-    config_file = tmp_path / "smtp_config.json"
+def temp_config(tmp_path):
+    """Create a temporary config file."""
+    config_file = tmp_path / "config.json"
     config_data = {
-        "smtp_server": "smtp.example.com",
-        "smtp_port": 587,
-        "username": "test@example.com",
-        "password": "password123",
-        "recipients": ["recipient@example.com"],
+        "send_email": True,
+        "stock_file": "titoli_check.txt",
+        "output_file": "eod_data.csv",
+        "smtp": {
+            "server": "smtp.example.com",
+            "port": 587,
+            "username": "test@example.com",
+            "password": "password123",
+            "recipients": ["recipient@example.com"],
+            "subject": "Test Subject",
+        },
     }
     config_file.write_text(json.dumps(config_data))
     return config_file
@@ -147,38 +153,30 @@ class TestDataFormatting:
         assert result == "No data"
 
 
-class TestJSONOperations:
-    """Tests for JSON operations."""
+class TestCSVOperations:
+    """Tests for CSV operations."""
 
-    def test_format_data_string(self, sample_eod_data):
-        """Test formatting data as comma-separated string."""
-        result = lambda_handler.format_data_string(sample_eod_data)
+    def test_save_to_csv(self, sample_results, temp_csv_file):
+        """Test saving results to CSV."""
+        lambda_handler.save_to_csv(sample_results, str(temp_csv_file))
 
-        # Should be: "date,open,high,low,close"
-        assert result == "2024-01-15,23.5000,24.0000,23.2500,23.7500"
+        # Read and verify CSV
+        lines = temp_csv_file.read_text().splitlines()
 
-    def test_save_to_json(self, sample_results, temp_json_file):
-        """Test saving results to JSON."""
-        lambda_handler.save_to_json(sample_results, str(temp_json_file))
-
-        # Read and verify JSON
-        data = json.loads(temp_json_file.read_text())
-
-        assert "ENI" in data
-        assert data["ENI"] == "2024-01-15,23.5000,24.0000,23.2500,23.7500"
-
-        assert "INVALID" in data
-        assert data["INVALID"] is None
+        assert len(lines) == 2  # Header + 1 valid data row
+        assert "Ticker,Name,Date,Open,High,Low,Close" in lines[0]
+        assert "ENI,eni,2024-01-15" in lines[1]
+        assert "23.5000,24.0000,23.2500,23.7500" in lines[1]
 
 
 class TestLambdaHandler:
     """Tests for Lambda handler."""
 
-    def test_lambda_handler_success(self, temp_single_stock_file, temp_json_file, mock_context):
+    def test_lambda_handler_success(self, temp_single_stock_file, temp_csv_file, mock_context):
         """Test Lambda handler with successful execution."""
         event = {
             "stock_file": str(temp_single_stock_file),
-            "output_file": str(temp_json_file),
+            "output_file": str(temp_csv_file),
         }
 
         response = lambda_handler.handler(event, mock_context)
@@ -205,31 +203,32 @@ class TestLambdaHandler:
         assert "error" in body
 
 
-class TestSMTPConfiguration:
-    """Tests for SMTP configuration."""
+class TestConfiguration:
+    """Tests for configuration loading."""
 
-    def test_load_smtp_config_missing_file(self):
-        """Test loading SMTP config when file doesn't exist."""
-        config = lambda_handler.load_smtp_config("/nonexistent/smtp_config.json")
-        assert config is None
+    def test_load_config_missing_file(self):
+        """Test loading config when file doesn't exist (returns defaults)."""
+        config = lambda_handler.load_config("/nonexistent/config.json")
+        assert config["send_email"] is False
+        assert config["stock_file"] == "titoli_check.txt"
 
-    def test_load_smtp_config_valid(self, temp_smtp_config):
-        """Test loading valid SMTP config."""
-        config = lambda_handler.load_smtp_config(str(temp_smtp_config))
+    def test_load_config_valid(self, temp_config):
+        """Test loading valid config."""
+        config = lambda_handler.load_config(str(temp_config))
 
         assert config is not None
-        assert config["smtp_server"] == "smtp.example.com"
-        assert config["smtp_port"] == 587
-        assert "recipients" in config
-        assert config["recipients"] == ["recipient@example.com"]
+        assert config["send_email"] is True
+        assert config["smtp"]["server"] == "smtp.example.com"
+        assert config["smtp"]["port"] == 587
+        assert config["smtp"]["recipients"] == ["recipient@example.com"]
 
-    def test_load_smtp_config_invalid_json(self, tmp_path):
-        """Test loading invalid JSON config."""
+    def test_load_config_invalid_json(self, tmp_path):
+        """Test loading invalid JSON config (returns defaults)."""
         config_file = tmp_path / "invalid.json"
         config_file.write_text("not valid json{")
 
-        config = lambda_handler.load_smtp_config(str(config_file))
-        assert config is None
+        config = lambda_handler.load_config(str(config_file))
+        assert config["send_email"] is False  # Returns defaults
 
 
 class TestEmailFormatting:
@@ -262,15 +261,14 @@ class TestEmailFormatting:
 class TestLambdaHandlerWithEmail:
     """Tests for Lambda handler with email functionality."""
 
-    def test_lambda_handler_with_email_no_config(
-        self, temp_single_stock_file, temp_json_file, mock_context
+    def test_lambda_handler_with_email_no_smtp(
+        self, temp_single_stock_file, temp_csv_file, mock_context
     ):
-        """Test Lambda handler with email enabled but no config file."""
+        """Test Lambda handler with email enabled but no SMTP config."""
         event = {
             "stock_file": str(temp_single_stock_file),
-            "output_file": str(temp_json_file),
+            "output_file": str(temp_csv_file),
             "send_email": True,
-            "smtp_config_file": "/nonexistent/smtp_config.json",
         }
 
         response = lambda_handler.handler(event, mock_context)
@@ -281,12 +279,12 @@ class TestLambdaHandlerWithEmail:
         assert "email_error" in body
 
     def test_lambda_handler_without_email_flag(
-        self, temp_single_stock_file, temp_json_file, mock_context
+        self, temp_single_stock_file, temp_csv_file, mock_context
     ):
         """Test Lambda handler without email flag (default behavior)."""
         event = {
             "stock_file": str(temp_single_stock_file),
-            "output_file": str(temp_json_file),
+            "output_file": str(temp_csv_file),
         }
 
         response = lambda_handler.handler(event, mock_context)
