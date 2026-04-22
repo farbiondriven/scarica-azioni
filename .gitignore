@@ -49,5 +49,5 @@ lambda-package/
 lambda-deployment.zip
 lambda.zip
 
-# SMTP secrets
-smtp_config.json
+# Config with secrets
+config.json

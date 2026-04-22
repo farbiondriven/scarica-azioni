@@ -118,35 +118,37 @@ def save_to_csv(results: list, filename: str) -> None:
                 )
 
 
-def load_smtp_config(config_file: str = "smtp_config.json") -> dict | None:
+def load_config(config_file: str = "config.json") -> dict:
     """
-    Load SMTP configuration from JSON file.
+    Load configuration from JSON file.
 
     Args:
-        config_file: Path to SMTP config file
+        config_file: Path to config file
 
     Returns:
-        Dictionary with SMTP config or None if file doesn't exist
+        Dictionary with config (returns defaults if file doesn't exist)
     """
+    defaults = {
+        "send_email": False,
+        "stock_file": "titoli_check.txt",
+        "output_file": "eod_data.csv",
+        "smtp": {},
+    }
+
     try:
         config_path = Path(config_file)
         if not config_path.exists():
-            logger.warning(f"SMTP config file not found: {config_file}")
-            return None
+            logger.info(f"Config file not found: {config_file}, using defaults")
+            return defaults
 
-        with open(config_file) as f:
+        with open(config_path) as f:
             config = json.load(f)
-
-        required_keys = ["smtp_server", "smtp_port", "username", "password", "recipients"]
-        if not all(key in config for key in required_keys):
-            logger.error(f"SMTP config missing required keys: {required_keys}")
-            return None
 
         return config
 
     except Exception as e:
-        logger.error(f"Error loading SMTP config: {e}")
-        return None
+        logger.error(f"Error loading config: {e}")
+        return defaults
 
 
 def format_email_body(results: list) -> str:
@@ -238,19 +240,17 @@ def send_email(
         msg.attach(part2)
 
         # Send email
-        logger.info(
-            f"Connecting to SMTP server: {smtp_config['smtp_server']}:{smtp_config['smtp_port']}"
-        )
+        logger.info(f"Connecting to SMTP server: {smtp_config['server']}:{smtp_config['port']}")
 
         # Determine if we should use TLS or SSL
         use_ssl = smtp_config.get("use_ssl", False)
 
         if use_ssl:
             # Use SSL (port 465 typically)
-            server = smtplib.SMTP_SSL(smtp_config["smtp_server"], smtp_config["smtp_port"])
+            server = smtplib.SMTP_SSL(smtp_config["server"], smtp_config["port"])
         else:
             # Use TLS (port 587 typically)
-            server = smtplib.SMTP(smtp_config["smtp_server"], smtp_config["smtp_port"])
+            server = smtplib.SMTP(smtp_config["server"], smtp_config["port"])
             server.starttls()
 
         server.login(smtp_config["username"], smtp_config["password"])
@@ -308,18 +308,20 @@ def handler(event, context):
     AWS Lambda handler function.
 
     Args:
-        event: Lambda event (can contain custom stock_file path, send_email flag, smtp_config_file)
+        event: Lambda event (optional overrides for config)
         context: Lambda context
 
     Returns:
         Response with status and results
     """
     try:
-        # Get stock file path from event or use default
-        stock_file = event.get("stock_file", "titoli_check.txt")
-        output_file = event.get("output_file", "/tmp/eod_data.csv")
-        send_email_flag = event.get("send_email", False)
-        smtp_config_file = event.get("smtp_config_file", "smtp_config.json")
+        # Load config
+        config = load_config()
+
+        # Event can override config
+        stock_file = event.get("stock_file", config.get("stock_file", "titoli_check.txt"))
+        output_file = event.get("output_file", config.get("output_file", "eod_data.csv"))
+        send_email_flag = event.get("send_email", config.get("send_email", False))
 
         logger.info(f"Fetching EOD data from {stock_file}")
 
@@ -340,23 +342,21 @@ def handler(event, context):
             "output_file": output_file,
         }
 
-        # Send email if requested
-        if send_email_flag:
-            smtp_config = load_smtp_config(smtp_config_file)
+        # Send email if enabled
+        if send_email_flag and config.get("smtp"):
+            smtp_config = config["smtp"]
+            subject = smtp_config.get("subject", "MAIL AUTOM CHECK ADVFN")
+            html_body = format_email_body(results)
 
-            if smtp_config:
-                subject = smtp_config.get("subject", "MAIL AUTOM CHECK ADVFN")
-                html_body = format_email_body(results)
+            email_sent = send_email(smtp_config, subject, html_body)
+            response_body["email_sent"] = email_sent
 
-                email_sent = send_email(smtp_config, subject, html_body)
-                response_body["email_sent"] = email_sent
-
-                if email_sent:
-                    response_body["message"] += " and email sent"
-            else:
-                response_body["email_sent"] = False
-                response_body["email_error"] = "SMTP configuration not found or invalid"
-                logger.warning("Email requested but SMTP config not available")
+            if email_sent:
+                response_body["message"] += " and email sent"
+        elif send_email_flag:
+            response_body["email_sent"] = False
+            response_body["email_error"] = "SMTP not configured"
+            logger.warning("Email requested but SMTP not configured")
 
         return {
             "statusCode": 200,
@@ -371,7 +371,7 @@ def handler(event, context):
         }
 
 
-# CLI entry point for local testing
+# CLI entry point
 if __name__ == "__main__":
     logging.basicConfig(
         level=logging.INFO,
@@ -379,9 +379,6 @@ if __name__ == "__main__":
         datefmt="%Y-%m-%d %H:%M:%S",
     )
 
-    # Simulate Lambda event
-    event = {"stock_file": "titoli_check.txt", "output_file": "eod_data.csv"}
-    context = None
-
-    response = handler(event, context)
+    # Load config and run
+    response = handler({}, None)
     print(json.dumps(response, indent=2))

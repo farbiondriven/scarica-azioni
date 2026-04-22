@@ -5,7 +5,9 @@ a = Analysis(
     ['lambda_handler.py'],
     pathex=[],
     binaries=[],
-    datas=[('titoli_check.txt', '.')],
+    datas=[],
+    # Keep titoli_check.txt and config.json external (not bundled)
+    # Users can edit stock list and config without rebuilding,
     hiddenimports=['yfinance', 'pandas', 'numpy', 'requests'],
     hookspath=[],
     hooksconfig={},

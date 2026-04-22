@@ -1,0 +1,16 @@
+{
+  "send_email": false,
+  "stock_file": "titoli_check.txt",
+  "output_file": "eod_data.csv",
+  "smtp": {
+    "server": "smtp.gmail.com",
+    "port": 587,
+    "use_ssl": false,
+    "username": "your-email@gmail.com",
+    "password": "your-app-password",
+    "recipients": [
+      "recipient@example.com"
+    ],
+    "subject": "MAIL AUTOM CHECK ADVFN"
+  }
+}
