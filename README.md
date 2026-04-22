@@ -8,7 +8,7 @@ Italian Stock Market End-of-Day (EOD) data fetcher using Yahoo Finance API.
 
 - Fetch end-of-day OHLC (Open, High, Low, Close) data for Italian stocks
 - Read stock list from `titoli_check.txt`
-- Export data to JSON format
+- Export data to CSV format
 - **📧 Send email reports** with formatted stock data (SMTP)
 - Logging support
 - Type hints and clean code
@@ -46,7 +46,7 @@ python lambda_handler.py
 import lambda_handler
 
 # Fetch EOD data for stocks in the list
-results = lambda_handler.fetch_eod_data("titoli_check.txt", "output.json")
+results = lambda_handler.fetch_eod_data("titoli_check.txt", "output.csv")
 
 # Process results
 for result in results:
@@ -54,16 +54,13 @@ for result in results:
         print(f"{result['ticker']}: {result['data']['close']:.2f}")
 ```
 
-**Output JSON format:**
-```json
-{
-  "ENI": "2026-04-21,24.0000,24.4200,23.6800,23.9550",
-  "A2A": "2026-04-21,2.5330,2.5440,2.4950,2.5110",
-  "ENEL": "2026-04-21,9.8560,9.9070,9.8190,9.8410"
-}
+**Output CSV format:**
+```csv
+Ticker,Name,Date,Open,High,Low,Close
+ENI,eni,2026-04-21,24.0000,24.4200,23.6800,23.9550
+A2A,a2a,2026-04-21,2.5330,2.5440,2.4950,2.5110
+ENEL,enel,2026-04-21,9.8560,9.9070,9.8190,9.8410
 ```
-
-Each value is a comma-separated string: `"date,open,high,low,close"`
 
 ### 📧 Email Reports
 
@@ -156,7 +153,7 @@ The executable will be created in `dist/scarica-azioni.exe` (~100-150MB, include
 
 The program will:
 - Fetch EOD data for all stocks in `titoli_check.txt`
-- Save results to `eod_data.json` in the same directory
+- Save results to `eod_data.csv` in the same directory
 - Display progress in the console
 
 #### GitHub Actions Auto-Build
@@ -202,7 +199,7 @@ aws lambda update-function-code \
 ```json
 {
   "stock_file": "titoli_check.txt",
-  "output_file": "/tmp/eod_data.json"
+  "output_file": "/tmp/eod_data.csv"
 }
 ```
 

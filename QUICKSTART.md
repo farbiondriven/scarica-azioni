@@ -17,7 +17,7 @@ build_windows.bat
 scarica-azioni.exe
 ```
 
-Output: `eod_data.json` with stock data
+Output: `eod_data.csv` with stock data
 
 ---
 
@@ -35,7 +35,7 @@ Timeout: 60+ seconds
 Memory: 256+ MB
 
 # Invoke
-aws lambda invoke --function-name scarica-azioni output.json
+aws lambda invoke --function-name scarica-azioni output.csv
 ```
 
 ---
@@ -60,8 +60,8 @@ python lambda_handler.py
 
 ```bash
 # 1. Setup SMTP config
-cp smtp_config.example.json smtp_config.json
-# Edit smtp_config.json with your SMTP settings
+cp smtp_config.example.csv smtp_config.csv
+# Edit smtp_config.csv with your SMTP settings
 
 # 2. Run with email enabled
 python -c "
@@ -82,7 +82,7 @@ See [EMAIL_SETUP.md](EMAIL_SETUP.md) for detailed instructions.
 All methods:
 1. Read `titoli_check.txt` (15 Italian stocks)
 2. Fetch end-of-day prices from Yahoo Finance
-3. Save to JSON with: Date, Open, High, Low, Close
+3. Save to CSV with: Date, Open, High, Low, Close
 4. Display progress/results
 5. **Optional:** Send email report with formatted data
 

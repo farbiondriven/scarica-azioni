@@ -96,41 +96,26 @@ def format_eod_data(data: dict) -> str:
     )
 
 
-def format_data_string(data: dict) -> str:
+def save_to_csv(results: list, filename: str) -> None:
     """
-    Format EOD data as comma-separated string.
-
-    Args:
-        data: EOD data dictionary
-
-    Returns:
-        Comma-separated string: "date,open,high,low,close"
-    """
-    return f"{data['date']},{data['open']:.4f},{data['high']:.4f},{data['low']:.4f},{data['close']:.4f}"
-
-
-def save_to_json(results: list, filename: str) -> None:
-    """
-    Save results to JSON file.
+    Save results to CSV file.
 
     Args:
         results: List of result dictionaries
         filename: Output filename
     """
-    output = {}
-
-    for result in results:
-        ticker = result["ticker"]
-        data = result["data"]
-
-        if data:
-            # Format: "ticker": "date,open,high,low,close"
-            output[ticker] = format_data_string(data)
-        else:
-            output[ticker] = None
-
     with open(filename, "w") as f:
-        json.dump(output, f, indent=2)
+        # Header
+        f.write("Ticker,Name,Date,Open,High,Low,Close\n")
+
+        # Data rows
+        for result in results:
+            if result["data"]:
+                d = result["data"]
+                f.write(
+                    f"{result['ticker']},{result['name']},{d['date']},"
+                    f"{d['open']:.4f},{d['high']:.4f},{d['low']:.4f},{d['close']:.4f}\n"
+                )
 
 
 def load_smtp_config(config_file: str = "smtp_config.json") -> dict | None:
@@ -280,13 +265,13 @@ def send_email(
         return False
 
 
-def fetch_eod_data(stock_file: str, output_file: str = "eod_data.json") -> list:
+def fetch_eod_data(stock_file: str, output_file: str = "eod_data.csv") -> list:
     """
     Fetch EOD data for all stocks in the file.
 
     Args:
         stock_file: Path to stock list file
-        output_file: Output JSON filename
+        output_file: Output CSV filename
 
     Returns:
         List of results
@@ -310,8 +295,8 @@ def fetch_eod_data(stock_file: str, output_file: str = "eod_data.json") -> list:
         else:
             logger.warning(f"         No data available for {ticker}")
 
-    # Save to JSON
-    save_to_json(results, output_file)
+    # Save to CSV
+    save_to_csv(results, output_file)
     logger.info("=" * 80)
     logger.info(f"Data saved to: {output_file}")
 
@@ -332,7 +317,7 @@ def handler(event, context):
     try:
         # Get stock file path from event or use default
         stock_file = event.get("stock_file", "titoli_check.txt")
-        output_file = event.get("output_file", "/tmp/eod_data.json")
+        output_file = event.get("output_file", "/tmp/eod_data.csv")
         send_email_flag = event.get("send_email", False)
         smtp_config_file = event.get("smtp_config_file", "smtp_config.json")
 
@@ -395,7 +380,7 @@ if __name__ == "__main__":
     )
 
     # Simulate Lambda event
-    event = {"stock_file": "titoli_check.txt", "output_file": "eod_data.json"}
+    event = {"stock_file": "titoli_check.txt", "output_file": "eod_data.csv"}
     context = None
 
     response = handler(event, context)

@@ -37,8 +37,9 @@ htmlcov/
 Thumbs.db
 
 # Output files
-eod_data.json
-eod_*.json
+eod_data.csv
+eod_*.csv
+*.csv
 
 # Logs
 *.log
