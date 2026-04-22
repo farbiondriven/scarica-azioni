@@ -19,6 +19,7 @@ def sample_eod_data():
     """Sample EOD data for testing."""
     return {
         "date": "2024-01-15",
+        "date_full": "15-Jan-2024",
         "open": 23.50,
         "high": 24.00,
         "low": 23.25,
@@ -97,9 +98,9 @@ class TestStockListParsing:
         stocks = lambda_handler.parse_stock_list(str(temp_stock_file))
 
         assert len(stocks) == 3
-        assert stocks["A2A"] == "a2a"
-        assert stocks["AZM"] == "azimut"
-        assert stocks["ENI"] == "eni"
+        assert stocks["A2A"] == ("a2a", "aem08.txt")
+        assert stocks["AZM"] == ("azimut", "azimut08.txt")
+        assert stocks["ENI"] == ("eni", "eni08.txt")
 
     def test_parse_stock_list_with_empty_lines(self, tmp_path):
         """Test parsing stock list with empty lines."""
@@ -169,14 +170,54 @@ class TestCSVOperations:
         assert "23.5000,24.0000,23.2500,23.7500" in lines[1]
 
 
+class TestRollFile:
+    """Tests for roll_file function."""
+
+    def test_roll_file_inserts_at_line_2(self, tmp_path, sample_eod_data):
+        """Test roll_file inserts new data at line 2 (after header)."""
+        stock_file = tmp_path / "stock.txt"
+        stock_file.write_text(
+            "Date,Open,High,Low,Close,,Close\n"
+            "14-Jan-2024,22.0000,22.5000,21.5000,22.2500,,22.2500\n"
+            "13-Jan-2024,21.0000,21.5000,20.5000,21.2500,,21.2500\n"
+        )
+
+        lambda_handler.roll_file(stock_file, sample_eod_data)
+
+        lines = stock_file.read_text().splitlines()
+        assert len(lines) == 4  # Header + 3 data lines
+        assert lines[0] == "Date,Open,High,Low,Close,,Close"
+        assert lines[1] == "15-Jan-2024,23.5000,24.0000,23.2500,23.7500,,23.7500"
+        assert lines[2] == "14-Jan-2024,22.0000,22.5000,21.5000,22.2500,,22.2500"
+        assert lines[3] == "13-Jan-2024,21.0000,21.5000,20.5000,21.2500,,21.2500"
+
+    def test_roll_file_preserves_header(self, tmp_path, sample_eod_data):
+        """Test roll_file always preserves the header."""
+        stock_file = tmp_path / "stock.txt"
+        stock_file.write_text("Date,Open,High,Low,Close,,Close\n")
+
+        lambda_handler.roll_file(stock_file, sample_eod_data)
+
+        lines = stock_file.read_text().splitlines()
+        assert lines[0] == "Date,Open,High,Low,Close,,Close"
+        assert lines[1] == "15-Jan-2024,23.5000,24.0000,23.2500,23.7500,,23.7500"
+
+
 class TestLambdaHandler:
     """Tests for Lambda handler."""
 
-    def test_lambda_handler_success(self, temp_single_stock_file, temp_csv_file, mock_context):
+    def test_lambda_handler_success(
+        self, temp_single_stock_file, temp_csv_file, tmp_path, mock_context
+    ):
         """Test Lambda handler with successful execution."""
+        # Create the stock file that roll_file expects
+        stock_data_file = tmp_path / "eni08.txt"
+        stock_data_file.write_text("Date,Open,High,Low,Close,,Close\n")
+
         event = {
             "stock_file": str(temp_single_stock_file),
             "output_file": str(temp_csv_file),
+            "stock_folder": str(tmp_path),
         }
 
         response = lambda_handler.handler(event, mock_context)
@@ -262,13 +303,18 @@ class TestLambdaHandlerWithEmail:
     """Tests for Lambda handler with email functionality."""
 
     def test_lambda_handler_with_email_no_smtp(
-        self, temp_single_stock_file, temp_csv_file, mock_context
+        self, temp_single_stock_file, temp_csv_file, tmp_path, mock_context
     ):
         """Test Lambda handler with email enabled but no SMTP config."""
+        # Create the stock file that roll_file expects
+        stock_data_file = tmp_path / "eni08.txt"
+        stock_data_file.write_text("Date,Open,High,Low,Close,,Close\n")
+
         event = {
             "stock_file": str(temp_single_stock_file),
             "output_file": str(temp_csv_file),
             "send_email": True,
+            "stock_folder": str(tmp_path),
         }
 
         response = lambda_handler.handler(event, mock_context)
@@ -279,12 +325,17 @@ class TestLambdaHandlerWithEmail:
         assert "email_error" in body
 
     def test_lambda_handler_without_email_flag(
-        self, temp_single_stock_file, temp_csv_file, mock_context
+        self, temp_single_stock_file, temp_csv_file, tmp_path, mock_context
     ):
         """Test Lambda handler without email flag (default behavior)."""
+        # Create the stock file that roll_file expects
+        stock_data_file = tmp_path / "eni08.txt"
+        stock_data_file.write_text("Date,Open,High,Low,Close,,Close\n")
+
         event = {
             "stock_file": str(temp_single_stock_file),
             "output_file": str(temp_csv_file),
+            "stock_folder": str(tmp_path),
         }
 
         response = lambda_handler.handler(event, mock_context)

@@ -269,30 +269,47 @@ def send_email(
 
 
 def roll_file(stock_file_path: Path, data: dict):
-    data_file = []
-    new_line = ",".join(
-        [
-            data["date_full"],
-            data["open"],
-            data["high"],
-            data["low"],
-            data["close"],
-            "",
-            data["close"],
-        ]
+    """
+    Update stock file with new data.
+
+    Inserts new data at line 2 (after header) and trims file to MAX_LINES.
+
+    Args:
+        stock_file_path: Path to the stock data file
+        data: Dictionary with EOD data including date_full
+    """
+    new_line = (
+        ",".join(
+            [
+                data["date_full"],
+                f"{data['open']:.4f}",
+                f"{data['high']:.4f}",
+                f"{data['low']:.4f}",
+                f"{data['close']:.4f}",
+                "",
+                f"{data['close']:.4f}",
+            ]
+        )
+        + "\n"
     )
+
     with stock_file_path.open("r") as file:
-        for i, line in enumerate(file):
-            if i == 1:
-                data_file.append(new_line)
-            if i < MAX_LINES:
-                data_file.append(line)
+        lines = file.readlines()
+
+    # Reconstruct file: header + new line + old lines (trimmed to MAX_LINES)
+    data_file = [lines[0]]  # header
+    data_file.append(new_line)  # new data at line 2
+    data_file.extend(lines[1 : MAX_LINES - 1])  # old data, trimmed
 
     with stock_file_path.open("w") as file:
         file.writelines(data_file)
 
 
-def fetch_eod_data(stock_file: str, output_file: str, single_stock_base_path: str) -> list:
+def fetch_eod_data(
+    stock_file: str,
+    output_file: str,
+    single_stock_base_path: str,
+) -> list:
     """
     Fetch EOD data for all stocks in the file.
 
