@@ -272,7 +272,8 @@ def roll_file(stock_file_path: Path, data: dict):
     """
     Update stock file with new data.
 
-    Inserts new data at line 2 (after header) and trims file to MAX_LINES.
+    If line 1 (first data line) has the same date as new data, replaces it.
+    Otherwise, inserts new data at line 2 (after header) and trims file to MAX_LINES.
 
     Args:
         stock_file_path: Path to the stock data file
@@ -296,10 +297,25 @@ def roll_file(stock_file_path: Path, data: dict):
     with stock_file_path.open("r") as file:
         lines = file.readlines()
 
-    # Reconstruct file: header + new line + old lines (trimmed to MAX_LINES)
+    # Check if line 1 (first data line) exists and has the same date
+    should_replace = False
+    if len(lines) > 1:
+        # Extract date from first data line (format: "DD-Mon-YY,...")
+        first_data_line = lines[1].strip()
+        if first_data_line:
+            existing_date = first_data_line.split(",")[0].upper()
+            new_date = data["date_full"].upper()
+            should_replace = existing_date == new_date
+
+    # Reconstruct file
     data_file = [lines[0]]  # header
-    data_file.append(new_line)  # new data at line 2
-    data_file.extend(lines[1 : MAX_LINES - 1])  # old data, trimmed
+    data_file.append(new_line)
+    if should_replace:
+        # Replace line 1 with new data, keep rest as-is
+        data_file.extend(lines[2:MAX_LINES])  # skip line 1, keep rest
+    else:
+        # Insert new data at line 2, push everything down
+        data_file.extend(lines[1 : MAX_LINES - 1])  # old data, trimmed
 
     with stock_file_path.open("w") as file:
         file.writelines(data_file)

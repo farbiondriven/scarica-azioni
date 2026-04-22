@@ -232,6 +232,51 @@ class TestRollFile:
         assert lines[4] == "12-Jan-24,20.000,20.500,19.500,20.250,,20.250"
         # Line "11-Jan-24" should be removed
 
+    def test_roll_file_replaces_same_date(self, tmp_path, sample_eod_data):
+        """Test roll_file replaces line 1 if same date exists."""
+        stock_file = tmp_path / "stock.txt"
+        # Create file where line 1 has the same date as sample_eod_data (15-Jan-24)
+        stock_file.write_text(
+            "Date,Open,High,Low,Close,,Close\n"
+            "15-Jan-24,20.000,21.000,19.500,20.500,,20.500\n"
+            "14-Jan-24,22.000,22.500,21.500,22.250,,22.250\n"
+            "13-Jan-24,21.000,21.500,20.500,21.250,,21.250\n"
+        )
+
+        lambda_handler.roll_file(stock_file, sample_eod_data)
+
+        lines = stock_file.read_text().splitlines()
+        # Should have same number of lines (replaced, not inserted)
+        assert len(lines) == 4
+        assert lines[0] == "Date,Open,High,Low,Close,,Close"
+        # Line 1 should be replaced with new data
+        assert lines[1] == "15-Jan-24,23.500,24.000,23.250,23.750,,23.750"
+        # Other lines should remain unchanged
+        assert lines[2] == "14-Jan-24,22.000,22.500,21.500,22.250,,22.250"
+        assert lines[3] == "13-Jan-24,21.000,21.500,20.500,21.250,,21.250"
+
+    def test_roll_file_inserts_different_date(self, tmp_path, sample_eod_data):
+        """Test roll_file inserts when line 1 has different date."""
+        stock_file = tmp_path / "stock.txt"
+        # Create file where line 1 has different date (14-Jan-24, not 15-Jan-24)
+        stock_file.write_text(
+            "Date,Open,High,Low,Close,,Close\n"
+            "14-Jan-24,22.000,22.500,21.500,22.250,,22.250\n"
+            "13-Jan-24,21.000,21.500,20.500,21.250,,21.250\n"
+        )
+
+        lambda_handler.roll_file(stock_file, sample_eod_data)
+
+        lines = stock_file.read_text().splitlines()
+        # Should have one more line (inserted, not replaced)
+        assert len(lines) == 4
+        assert lines[0] == "Date,Open,High,Low,Close,,Close"
+        # New data inserted at line 1
+        assert lines[1] == "15-Jan-24,23.500,24.000,23.250,23.750,,23.750"
+        # Old lines pushed down
+        assert lines[2] == "14-Jan-24,22.000,22.500,21.500,22.250,,22.250"
+        assert lines[3] == "13-Jan-24,21.000,21.500,20.500,21.250,,21.250"
+
 
 class TestLambdaHandler:
     """Tests for Lambda handler."""
