@@ -73,7 +73,7 @@ def get_eod_data(ticker: str) -> dict | None:
         return {
             "ticker": ticker,
             "date": latest.name.strftime("%Y-%m-%d"),
-            "date_full": latest.name.strftime("%d-%b-%Y"),
+            "date_full": latest.name.strftime("%d-%b-%y"),
             "open": latest["Open"],
             "high": latest["High"],
             "low": latest["Low"],
@@ -92,10 +92,10 @@ def format_eod_data(data: dict) -> str:
 
     return (
         f"{data['date']} - "
-        f"Open: {data['open']:.4f} - "
-        f"High: {data['high']:.4f} - "
-        f"Low: {data['low']:.4f} - "
-        f"Close: {data['close']:.4f}"
+        f"Open: {data['open']:.3f} - "
+        f"High: {data['high']:.3f} - "
+        f"Low: {data['low']:.3f} - "
+        f"Close: {data['close']:.3f}"
     )
 
 
@@ -117,7 +117,7 @@ def save_to_csv(results: list, filename: str) -> None:
                 d = result["data"]
                 f.write(
                     f"{result['ticker']},{result['name']},{d['date']},"
-                    f"{d['open']:.4f},{d['high']:.4f},{d['low']:.4f},{d['close']:.4f}\n"
+                    f"{d['open']:.3f},{d['high']:.3f},{d['low']:.3f},{d['close']:.3f}\n"
                 )
 
 
@@ -193,10 +193,10 @@ def format_email_body(results: list) -> str:
         if data:
             html += '<div class="data">'
             html += f"{data['date']}, "
-            html += f"Open: {data['open']:.4f}, "
-            html += f"High: {data['high']:.4f}, "
-            html += f"Low: {data['low']:.4f}, "
-            html += f"Close: {data['close']:.4f}"
+            html += f"Open: {data['open']:.3f}, "
+            html += f"High: {data['high']:.3f}, "
+            html += f"Low: {data['low']:.3f}, "
+            html += f"Close: {data['close']:.3f}"
             html += "</div>"
         else:
             html += '<div class="data no-data">No data available</div>'
@@ -282,12 +282,12 @@ def roll_file(stock_file_path: Path, data: dict):
         ",".join(
             [
                 data["date_full"],
-                f"{data['open']:.4f}",
-                f"{data['high']:.4f}",
-                f"{data['low']:.4f}",
-                f"{data['close']:.4f}",
+                f"{data['open']:.3f}",
+                f"{data['high']:.3f}",
+                f"{data['low']:.3f}",
+                f"{data['close']:.3f}",
                 "",
-                f"{data['close']:.4f}",
+                f"{data['close']:.3f}",
             ]
         )
         + "\n"
