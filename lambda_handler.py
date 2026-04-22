@@ -16,8 +16,10 @@ import yfinance as yf
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
+MAX_LINES = 202
 
-def parse_stock_list(file_path: str) -> dict:
+
+def parse_stock_list(file_path: str) -> dict[str, tuple[str, str]]:
     """
     Parse the stock list file.
 
@@ -42,7 +44,7 @@ def parse_stock_list(file_path: str) -> dict:
                 if len(info) >= 2:
                     ticker = info[-1]
                     name = "-".join(info[:-1])
-                    stocks[ticker] = name
+                    stocks[ticker] = name, parts[1]
 
     return stocks
 
@@ -71,6 +73,7 @@ def get_eod_data(ticker: str) -> dict | None:
         return {
             "ticker": ticker,
             "date": latest.name.strftime("%Y-%m-%d"),
+            "date_full": latest.name.strftime("%d-%b-%y"),
             "open": latest["Open"],
             "high": latest["High"],
             "low": latest["Low"],
@@ -89,10 +92,10 @@ def format_eod_data(data: dict) -> str:
 
     return (
         f"{data['date']} - "
-        f"Open: {data['open']:.4f} - "
-        f"High: {data['high']:.4f} - "
-        f"Low: {data['low']:.4f} - "
-        f"Close: {data['close']:.4f}"
+        f"Open: {data['open']:.3f} - "
+        f"High: {data['high']:.3f} - "
+        f"Low: {data['low']:.3f} - "
+        f"Close: {data['close']:.3f}"
     )
 
 
@@ -114,7 +117,7 @@ def save_to_csv(results: list, filename: str) -> None:
                 d = result["data"]
                 f.write(
                     f"{result['ticker']},{result['name']},{d['date']},"
-                    f"{d['open']:.4f},{d['high']:.4f},{d['low']:.4f},{d['close']:.4f}\n"
+                    f"{d['open']:.3f},{d['high']:.3f},{d['low']:.3f},{d['close']:.3f}\n"
                 )
 
 
@@ -190,10 +193,10 @@ def format_email_body(results: list) -> str:
         if data:
             html += '<div class="data">'
             html += f"{data['date']}, "
-            html += f"Open: {data['open']:.4f}, "
-            html += f"High: {data['high']:.4f}, "
-            html += f"Low: {data['low']:.4f}, "
-            html += f"Close: {data['close']:.4f}"
+            html += f"Open: {data['open']:.3f}, "
+            html += f"High: {data['high']:.3f}, "
+            html += f"Low: {data['low']:.3f}, "
+            html += f"Close: {data['close']:.3f}"
             html += "</div>"
         else:
             html += '<div class="data no-data">No data available</div>'
@@ -265,7 +268,48 @@ def send_email(
         return False
 
 
-def fetch_eod_data(stock_file: str, output_file: str = "eod_data.csv") -> list:
+def roll_file(stock_file_path: Path, data: dict):
+    """
+    Update stock file with new data.
+
+    Inserts new data at line 2 (after header) and trims file to MAX_LINES.
+
+    Args:
+        stock_file_path: Path to the stock data file
+        data: Dictionary with EOD data including date_full
+    """
+    new_line = (
+        ",".join(
+            [
+                data["date_full"],
+                f"{data['open']:.3f}",
+                f"{data['high']:.3f}",
+                f"{data['low']:.3f}",
+                f"{data['close']:.3f}",
+                "",
+                f"{data['close']:.3f}",
+            ]
+        )
+        + "\n"
+    )
+
+    with stock_file_path.open("r") as file:
+        lines = file.readlines()
+
+    # Reconstruct file: header + new line + old lines (trimmed to MAX_LINES)
+    data_file = [lines[0]]  # header
+    data_file.append(new_line)  # new data at line 2
+    data_file.extend(lines[1 : MAX_LINES - 1])  # old data, trimmed
+
+    with stock_file_path.open("w") as file:
+        file.writelines(data_file)
+
+
+def fetch_eod_data(
+    stock_file: str,
+    output_file: str,
+    single_stock_base_path: str,
+) -> list:
     """
     Fetch EOD data for all stocks in the file.
 
@@ -284,7 +328,8 @@ def fetch_eod_data(stock_file: str, output_file: str = "eod_data.csv") -> list:
 
     results = []
 
-    for ticker, name in stocks.items():
+    for ticker, value in stocks.items():
+        name, stock_filename = value
         logger.info(f"{ticker:8} ({name})")
         data = get_eod_data(ticker)
 
@@ -292,6 +337,10 @@ def fetch_eod_data(stock_file: str, output_file: str = "eod_data.csv") -> list:
 
         if data:
             logger.info(f"         {format_eod_data(data)}")
+            # add to file
+            stock_file_path = Path(single_stock_base_path) / stock_filename
+            logger.info("Appending to stock file %s", stock_file_path)
+            roll_file(stock_file_path, data)
         else:
             logger.warning(f"         No data available for {ticker}")
 
@@ -322,11 +371,14 @@ def handler(event, context):
         stock_file = event.get("stock_file", config.get("stock_file", "titoli_check.txt"))
         output_file = event.get("output_file", config.get("output_file", "eod_data.csv"))
         send_email_flag = event.get("send_email", config.get("send_email", False))
+        stock_folder = event.get("stock_folder", config.get("stock_folder", None))
+        if not stock_folder:
+            raise Exception("Missing stock folder from config, exiting")
 
         logger.info(f"Fetching EOD data from {stock_file}")
 
         # Fetch data
-        results = fetch_eod_data(stock_file, output_file)
+        results = fetch_eod_data(stock_file, output_file, stock_folder)
 
         # Count successes
         successful = sum(1 for r in results if r["data"] is not None)
