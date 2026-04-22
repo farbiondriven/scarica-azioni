@@ -2,6 +2,9 @@
   "send_email": false,
   "stock_file": "titoli_check.txt",
   "output_file": "eod_data.csv",
+  "update_individual_files": false,
+  "stock_folder": ".",
+  "max_lines": 100,
   "smtp": {
     "server": "smtp.gmail.com",
     "port": 587,
