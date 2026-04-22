@@ -19,7 +19,7 @@ def sample_eod_data():
     """Sample EOD data for testing."""
     return {
         "date": "2024-01-15",
-        "date_full": "15-Jan-2024",
+        "date_full": "15-Jan-24",
         "open": 23.50,
         "high": 24.00,
         "low": 23.25,
@@ -178,8 +178,8 @@ class TestRollFile:
         stock_file = tmp_path / "stock.txt"
         stock_file.write_text(
             "Date,Open,High,Low,Close,,Close\n"
-            "14-Jan-2024,22.0000,22.5000,21.5000,22.2500,,22.2500\n"
-            "13-Jan-2024,21.0000,21.5000,20.5000,21.2500,,21.2500\n"
+            "14-Jan-24,22.0000,22.5000,21.5000,22.2500,,22.2500\n"
+            "13-Jan-24,21.0000,21.5000,20.5000,21.2500,,21.2500\n"
         )
 
         lambda_handler.roll_file(stock_file, sample_eod_data)
@@ -187,9 +187,9 @@ class TestRollFile:
         lines = stock_file.read_text().splitlines()
         assert len(lines) == 4  # Header + 3 data lines
         assert lines[0] == "Date,Open,High,Low,Close,,Close"
-        assert lines[1] == "15-Jan-2024,23.5000,24.0000,23.2500,23.7500,,23.7500"
-        assert lines[2] == "14-Jan-2024,22.0000,22.5000,21.5000,22.2500,,22.2500"
-        assert lines[3] == "13-Jan-2024,21.0000,21.5000,20.5000,21.2500,,21.2500"
+        assert lines[1] == "15-Jan-24,23.5000,24.0000,23.2500,23.7500,,23.7500"
+        assert lines[2] == "14-Jan-24,22.0000,22.5000,21.5000,22.2500,,22.2500"
+        assert lines[3] == "13-Jan-24,21.0000,21.5000,20.5000,21.2500,,21.2500"
 
     def test_roll_file_preserves_header(self, tmp_path, sample_eod_data):
         """Test roll_file always preserves the header."""
@@ -200,7 +200,7 @@ class TestRollFile:
 
         lines = stock_file.read_text().splitlines()
         assert lines[0] == "Date,Open,High,Low,Close,,Close"
-        assert lines[1] == "15-Jan-2024,23.5000,24.0000,23.2500,23.7500,,23.7500"
+        assert lines[1] == "15-Jan-24,23.5000,24.0000,23.2500,23.7500,,23.7500"
 
 
 class TestLambdaHandler:
