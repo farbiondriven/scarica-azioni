@@ -141,10 +141,10 @@ class TestDataFormatting:
         result = lambda_handler.format_eod_data(sample_eod_data)
 
         assert "2024-01-15" in result
-        assert "23.5000" in result
-        assert "24.0000" in result
-        assert "23.2500" in result
-        assert "23.7500" in result
+        assert "23.500" in result
+        assert "24.000" in result
+        assert "23.250" in result
+        assert "23.750" in result
         # No euro sign
         assert "€" not in result
 
@@ -167,7 +167,7 @@ class TestCSVOperations:
         assert len(lines) == 2  # Header + 1 valid data row
         assert "Ticker,Name,Date,Open,High,Low,Close" in lines[0]
         assert "ENI,eni,2024-01-15" in lines[1]
-        assert "23.5000,24.0000,23.2500,23.7500" in lines[1]
+        assert "23.500,24.000,23.250,23.750" in lines[1]
 
 
 class TestRollFile:
@@ -178,8 +178,8 @@ class TestRollFile:
         stock_file = tmp_path / "stock.txt"
         stock_file.write_text(
             "Date,Open,High,Low,Close,,Close\n"
-            "14-Jan-24,22.0000,22.5000,21.5000,22.2500,,22.2500\n"
-            "13-Jan-24,21.0000,21.5000,20.5000,21.2500,,21.2500\n"
+            "14-Jan-24,22.000,22.500,21.500,22.250,,22.250\n"
+            "13-Jan-24,21.000,21.500,20.500,21.250,,21.250\n"
         )
 
         lambda_handler.roll_file(stock_file, sample_eod_data)
@@ -187,9 +187,9 @@ class TestRollFile:
         lines = stock_file.read_text().splitlines()
         assert len(lines) == 4  # Header + 3 data lines
         assert lines[0] == "Date,Open,High,Low,Close,,Close"
-        assert lines[1] == "15-Jan-24,23.5000,24.0000,23.2500,23.7500,,23.7500"
-        assert lines[2] == "14-Jan-24,22.0000,22.5000,21.5000,22.2500,,22.2500"
-        assert lines[3] == "13-Jan-24,21.0000,21.5000,20.5000,21.2500,,21.2500"
+        assert lines[1] == "15-Jan-24,23.500,24.000,23.250,23.750,,23.750"
+        assert lines[2] == "14-Jan-24,22.000,22.500,21.500,22.250,,22.250"
+        assert lines[3] == "13-Jan-24,21.000,21.500,20.500,21.250,,21.250"
 
     def test_roll_file_preserves_header(self, tmp_path, sample_eod_data):
         """Test roll_file always preserves the header."""
@@ -200,7 +200,37 @@ class TestRollFile:
 
         lines = stock_file.read_text().splitlines()
         assert lines[0] == "Date,Open,High,Low,Close,,Close"
-        assert lines[1] == "15-Jan-24,23.5000,24.0000,23.2500,23.7500,,23.7500"
+        assert lines[1] == "15-Jan-24,23.500,24.000,23.250,23.750,,23.750"
+
+    def test_roll_file_trims_at_max_lines_with_3_decimals(
+        self, tmp_path, sample_eod_data, monkeypatch
+    ):
+        """Test roll_file trims at MAX_LINES and uses 3 decimal places."""
+        # Mock MAX_LINES to 5 (header + 4 data lines)
+        monkeypatch.setattr(lambda_handler, "MAX_LINES", 5)
+
+        stock_file = tmp_path / "stock.txt"
+        # Create file with header + 4 data lines = 5 lines total
+        stock_file.write_text(
+            "Date,Open,High,Low,Close,,Close\n"
+            "14-Jan-24,22.000,22.500,21.500,22.250,,22.250\n"
+            "13-Jan-24,21.000,21.500,20.500,21.250,,21.250\n"
+            "12-Jan-24,20.000,20.500,19.500,20.250,,20.250\n"
+            "11-Jan-24,19.000,19.500,18.500,19.250,,19.250\n"
+        )
+
+        lambda_handler.roll_file(stock_file, sample_eod_data)
+
+        lines = stock_file.read_text().splitlines()
+        # Should have header + 4 data lines (last line "11-Jan-24" removed)
+        assert len(lines) == 5
+        assert lines[0] == "Date,Open,High,Low,Close,,Close"
+        # Check 3 decimal places are used
+        assert lines[1] == "15-Jan-24,23.500,24.000,23.250,23.750,,23.750"
+        assert lines[2] == "14-Jan-24,22.000,22.500,21.500,22.250,,22.250"
+        assert lines[3] == "13-Jan-24,21.000,21.500,20.500,21.250,,21.250"
+        assert lines[4] == "12-Jan-24,20.000,20.500,19.500,20.250,,20.250"
+        # Line "11-Jan-24" should be removed
 
 
 class TestLambdaHandler:
@@ -282,7 +312,7 @@ class TestEmailFormatting:
         assert "ENI" in html
         assert "eni" in html
         assert "2024-01-15" in html
-        assert "23.5000" in html
+        assert "23.500" in html
         assert "INVALID" in html
         assert "No data available" in html
         assert "<html>" in html
